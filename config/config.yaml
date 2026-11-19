@@ -1,0 +1,50 @@
+data:
+  db_path: "../AllLife_SQLite_Assessment_Inputs/AllLife_Telecom_Churn_Assessment.sqlite"
+  # Exclude 'Joined' customers: they haven't had time to churn (quarter-end snapshot).
+  # This avoids a selection bias: Joined customers are systematically new and would
+  # pull churn probability toward 0 without representing stable customer behavior.
+  modeling_population: ["Churned", "Stayed"]
+  target_column: "churn_label"
+  random_state: 42
+
+features:
+  # Leakage-flagged fields: churn_category & churn_reason are post-churn outcomes.
+  # They MUST NOT be predictors — including them would be future leakage.
+  exclude_columns:
+    - "customer_id"
+    - "zip_code"
+    - "churn_category"
+    - "churn_reason"
+    - "customer_status"
+  # total_charges, total_revenue, total_long_distance_charges, total_refunds,
+  # total_extra_data_charges are cumulative snapshot fields — valid for a batch
+  # scoring scenario where the score is produced at quarter-end, but would need
+  # to be replaced with partial-period estimates for real-time intra-quarter scoring.
+  leakage_risk_note: >
+    Cumulative billing fields reflect end-of-quarter totals. For real-time scoring
+    these should be substituted with rolling partial-period equivalents.
+
+training:
+  test_size: 0.2
+  cv_folds: 5
+  scoring_metric: "roc_auc"
+  n_optuna_trials: 50
+  optuna_timeout_seconds: 600
+  random_state: 42
+  # Handle class imbalance: ~26% churn rate → moderate imbalance.
+  # Strategy: class_weight='balanced' for tree models + threshold tuning.
+  # SMOTE is an alternative but can generate noise with categorical features.
+  imbalance_strategy: "class_weight"
+
+mlflow:
+  experiment_name: "telecom_churn_alllife"
+  # SQLite backend for local dev; swap for Databricks tracking URI in production.
+  tracking_uri: "sqlite:///mlflow.db"
+  model_registry_name: "telecom_churn_model"
+
+models:
+  candidates:
+    - logistic_regression
+    - random_forest
+    - xgboost
+    - lightgbm
