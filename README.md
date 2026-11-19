@@ -165,6 +165,29 @@ Default threshold (0.5) gives balanced trade-off. Optimised F2 threshold (~0.285
 
 ---
 
+## Assumptions
+
+### Business parameters (provided in Part B problem statement)
+These values are **explicitly hypothetical** — stated as such in the assessment brief. They should be replaced with empirically validated figures before any production deployment.
+
+| Parameter | Value | Source |
+|---|---|---|
+| Cost per contact | $4 | Part B problem statement |
+| Contribution margin per incremental retention | $180 | Part B problem statement |
+| Maximum campaign contacts | 500 | Part B problem statement |
+
+### Modelling assumptions (not in the problem statement)
+These were added during modelling and require validation before production use.
+
+| Assumption | Value | Rationale | How to validate |
+|---|---|---|---|
+| Campaign response rate | 10% | Conservative industry benchmark for telecom retention campaigns | Run the RCT described in Part B Q1; measure observed retention rate per decile |
+| Scoring window | Quarter-end batch | Cumulative billing fields (`total_charges`, `total_revenue`) reflect end-of-quarter totals — only valid at Q-end | For intra-quarter scoring, replace with rolling partial-period aggregates |
+| Modelling population | Churned + Stayed only | `Joined` customers excluded — insufficient tenure to exhibit stable churn behaviour | Re-evaluate if the business needs to score new customers separately |
+| Class imbalance handling | `class_weight='balanced'` + `scale_pos_weight` | SMOTE rejected: interpolation on mixed categorical/numeric features produces unrealistic synthetic customers | Benchmark SMOTE on a held-out validation set if imbalance worsens in future quarters |
+
+---
+
 ## EDA Key Findings
 
 1. **Tenure is the strongest predictor**: 0-6 month customers churn at 77.7%; 60+ month customers at 6.9%

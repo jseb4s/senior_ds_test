@@ -165,7 +165,7 @@ A customer with P(churn) = 0.90 who would churn regardless of a $20 offer provid
    Net value(i) = τ̂ × $180 − $4
    ```
    Where τ̂ can be estimated from a pilot RCT (see B1) stratified by churn decile.
-3. **Without causal data**: use a conservative τ̂ assumption (e.g., 10% response in the top decile, 5% in mid decile, 2% in low decile based on industry benchmarks).
+3. **Without causal data**: use a conservative τ̂ assumption (e.g., 10% response in the top decile, 5% in mid decile, 2% in low decile — these are industry benchmarks for telecom retention, **not derived from this dataset**, and must be replaced with observed rates from the RCT in B1).
 4. Select the top-N contacts where `τ̂ × $180 − $4 > 0`, **capped at 500**.
 5. **When fewer than 500 should be selected**: if the marginal customer's expected net value is negative (τ̂ × $180 < $4), do not contact them. With a 10% assumed response rate, the threshold is P(churn) × 10% × $180 > $4 → P(churn) > 22%. In practice, this is calibrated via the threshold analysis (see `reports/figures/10_threshold_analysis_xgboost.png`).
 
