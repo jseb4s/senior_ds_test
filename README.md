@@ -15,26 +15,22 @@ telecom_churn/
 │   │   └── loader.py            # SQLite reader, population filter, quality checks
 │   ├── features/
 │   │   └── engineering.py       # Feature engineering + sklearn ColumnTransformer
-│   ├── eda/
-│   │   └── analysis.py          # EDA functions and figure generation
 │   ├── models/
 │   │   └── trainer.py           # Optuna studies + MLflow tracking + model selection
 │   └── evaluation/
 │       ├── metrics.py           # ROC-AUC, F2, threshold optimisation, ROI calc
 │       └── shap_analysis.py     # SHAP global + local explainability (TreeExplainer)
 ├── scripts/
-│   ├── run_eda.py               # Standalone EDA runner
 │   ├── train.py                 # Main training entry point
 │   ├── evaluate.py              # Post-training comparison plots + SHAP analysis
 │   ├── predict.py               # Batch scoring: load champion, score new data
 │   └── register_model.py        # Manual step: register champion in MLflow Model Registry
 ├── notebooks/
-│   └── 01_EDA.py                # EDA notebook (Databricks-compatible)
+│   └── EDA.ipynb                # Exploratory data analysis notebook
 ├── reports/
 │   ├── figures/                 # All generated plots (00–15)
 │   ├── predictions.csv          # Batch scores from predict.py
-│   ├── logistic_regression_odds_ratios.csv  # LR coefficients as odds ratios
-│   └── Part_B_Answers.md        # Written reasoning exercise
+│   └── logistic_regression_odds_ratios.csv  # LR coefficients as odds ratios
 ├── tests/
 │   ├── __init__.py
 │   ├── test_features.py         # Unit tests for feature engineering
@@ -54,8 +50,8 @@ Requires [uv](https://docs.astral.sh/uv/) (`pip install uv` or `brew install uv`
 cd telecom_churn
 uv sync --dev
 
-# 2. Run EDA
-uv run python scripts/run_eda.py
+# 2. Run EDA (open and execute the notebook)
+# notebooks/EDA.ipynb
 
 # 3. Train all models (30 Optuna trials each; ~8 min on MacBook M1)
 uv run python scripts/train.py --trials 30
