@@ -1,13 +1,3 @@
-"""
-Data loading and validation layer.
-
-Responsible for:
-- Reading from the SQLite source (read-only)
-- Applying modeling population filter (Churned / Stayed only)
-- Creating the binary churn label
-- Surfacing data quality checks
-"""
-
 import logging
 import sqlite3
 from pathlib import Path

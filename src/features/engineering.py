@@ -1,15 +1,3 @@
-"""
-Feature engineering pipeline.
-
-Design decisions:
-- Uses sklearn Pipeline/ColumnTransformer for reproducibility and to prevent
-  train/test leakage in transformations (e.g., imputation statistics fit only on train).
-- Categorical encoding: OrdinalEncoder inside pipeline (compatible with tree models).
-  For LR, OneHotEncoder is used instead (injected via config).
-- Binary Yes/No columns: mapped to 0/1 before pipeline to reduce cardinality.
-- Derived features added before pipeline to maximise interpretability.
-"""
-
 import logging
 from typing import Optional
 

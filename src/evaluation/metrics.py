@@ -1,19 +1,3 @@
-"""
-Evaluation utilities.
-
-Business context:
-- False Negatives (missed churners) → lost revenue from preventable churn.
-- False Positives (wrongly targeted stayers) → wasted campaign spend ($4/contact).
-- At $180 margin per retained customer and $4 cost per contact, the break-even
-  precision at a given recall is determined by the ROI equation:
-      precision_min = cost / (cost + margin) ≈ 2.2%
-  This is very low, meaning ROC-AUC and F1 are still the primary drivers, but
-  the model must be calibrated for threshold selection.
-- Primary metric: ROC-AUC (threshold-invariant, handles class imbalance well).
-- Secondary: F2 score (weights recall 2× over precision, reflecting business cost
-  asymmetry where missing a churner is more expensive than a wasted contact).
-"""
-
 import logging
 from typing import Optional
 

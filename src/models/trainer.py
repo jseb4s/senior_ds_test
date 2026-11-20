@@ -1,17 +1,3 @@
-"""
-Model training orchestrator with Optuna hyperparameter optimisation + MLflow tracking.
-
-Architecture decisions:
-1. Each candidate model gets its own Optuna study logged under a separate MLflow run.
-2. Optuna's TPE sampler (default) outperforms random search and grid search on the
-   same budget — we use it for all models.
-3. Cross-validation inside each Optuna trial to prevent optimistic bias from a single
-   train/val split.
-4. The final model is retrained on the full training set with best params.
-5. MLflow logs: params, metrics, feature importances, the trained pipeline artifact.
-6. Model selection: best model by ROC-AUC on the held-out test set.
-"""
-
 import logging
 from pathlib import Path
 from typing import Optional
@@ -40,10 +26,6 @@ logger = logging.getLogger(__name__)
 
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-
-# ---------------------------------------------------------------------------
-# Optuna objective factories
-# ---------------------------------------------------------------------------
 
 def _objective_lr(trial, X_train, y_train, preprocessor, cv, scoring):
     C = trial.suggest_float("C", 1e-4, 10.0, log=True)
@@ -122,10 +104,6 @@ def _objective_lgbm(trial, X_train, y_train, preprocessor, cv, scoring, scale_po
     return scores.mean()
 
 
-# ---------------------------------------------------------------------------
-# Model builders with best params
-# ---------------------------------------------------------------------------
-
 def _build_lr(params, use_ohe: bool = True):
     return LogisticRegression(
         C=params["C"],
@@ -177,10 +155,6 @@ def _build_lgbm(params, scale_pos_weight):
         random_state=42, n_jobs=-1, verbose=-1,
     ), False
 
-
-# ---------------------------------------------------------------------------
-# Main training function
-# ---------------------------------------------------------------------------
 
 def train_and_evaluate(
     X: pd.DataFrame,
@@ -240,11 +214,10 @@ def train_and_evaluate(
                 "scale_pos_weight": scale_pos_weight,
             })
 
-            # Determine whether to use OHE (logistic regression needs it)
             use_ohe = (model_name == "logistic_regression")
             preprocessor = build_preprocessor(numeric_cols, categorical_cols, use_ohe=use_ohe)
 
-            # --- Optuna study ---
+            #optuna study
             study = optuna.create_study(direction="maximize", study_name=model_name)
 
             if model_name == "logistic_regression":
@@ -269,7 +242,7 @@ def train_and_evaluate(
             mlflow.log_metric(f"cv_{scoring}", best_cv_score)
             mlflow.log_params({f"best_{k}": v for k, v in best_params.items()})
 
-            # --- Retrain on full training set with best params ---
+            # retrain on full training set with best params
             if model_name == "logistic_regression":
                 clf, _ = _build_lr(best_params, use_ohe=use_ohe)
             elif model_name == "random_forest":
@@ -282,7 +255,7 @@ def train_and_evaluate(
             pipeline = Pipeline([("pre", preprocessor), ("clf", clf)])
             pipeline.fit(X_train, y_train)
 
-            # --- Evaluation ---
+            # eval
             y_prob = pipeline.predict_proba(X_test)[:, 1]
             optimal_threshold = find_optimal_threshold(y_test, y_prob, strategy="f2")
             metrics = compute_all_metrics(y_test, y_prob, threshold=optimal_threshold)
@@ -297,16 +270,14 @@ def train_and_evaluate(
 
             log_metrics_summary(metrics, prefix=model_name)
 
-            # --- Feature importances (tree models) ---
+            # featre imp.
             fi_df = _extract_feature_importances(pipeline, numeric_cols, categorical_cols, use_ohe)
             if fi_df is not None:
                 fi_path = f"/tmp/{model_name}_feature_importance.csv"
                 fi_df.to_csv(fi_path, index=False)
                 mlflow.log_artifact(fi_path)
 
-            # --- Log model ---
-            # Use pickle serialization to avoid skops trusted-type friction in dev.
-            # In Databricks production, consider mlflow.sklearn.SERIALIZATION_FORMAT_CLOUDPICKLE.
+
             mlflow.sklearn.log_model(
                 pipeline,
                 artifact_path="model",
@@ -324,7 +295,7 @@ def train_and_evaluate(
                 "run_id": mlflow.active_run().info.run_id,
             }
 
-    # --- Select champion model ---
+    # slect champion model
     champion = max(results, key=lambda m: results[m]["metrics"]["roc_auc"])
     logger.info("Champion model: %s (ROC-AUC=%.4f)", champion, results[champion]["metrics"]["roc_auc"])
 

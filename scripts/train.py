@@ -1,18 +1,3 @@
-#!/usr/bin/env python
-"""
-Main training script.
-
-Usage:
-    python scripts/train.py
-    python scripts/train.py --models logistic_regression xgboost
-    python scripts/train.py --trials 20  # quick run for testing
-
-Databricks usage:
-    - Upload this repo to DBFS or use Repos.
-    - Set MLFLOW_TRACKING_URI to the Databricks MLflow server.
-    - Run: dbutils.notebook.run("scripts/train", timeout_seconds=3600)
-"""
-
 import argparse
 import logging
 import sys
@@ -58,14 +43,12 @@ def main():
 
     db_path = Path(__file__).parents[1] / config["data"]["db_path"]
 
-    # --- Load data ---
     logger.info("Loading modeling dataset...")
     df = load_modeling_dataset(
         db_path=db_path,
         modeling_population=config["data"]["modeling_population"],
     )
 
-    # --- Feature engineering ---
     logger.info("Preparing features...")
     X, y, numeric_cols, categorical_cols = prepare_features(
         df, exclude_cols=config["features"]["exclude_columns"]
@@ -76,7 +59,6 @@ def main():
         *X.shape, y.mean() * 100,
     )
 
-    # --- Train ---
     results, champion = train_and_evaluate(
         X=X, y=y,
         numeric_cols=numeric_cols,
@@ -85,9 +67,8 @@ def main():
         model_names=args.models,
     )
 
-    # --- Summary ---
     logger.info("=" * 60)
-    logger.info("TRAINING SUMMARY")
+    logger.info("Training summary")
     logger.info("=" * 60)
     for model_name, res in sorted(results.items(), key=lambda x: x[1]["metrics"]["roc_auc"], reverse=True):
         m = res["metrics"]
@@ -112,6 +93,9 @@ def main():
         fi = champ["feature_importances"].head(10)
         for _, row in fi.iterrows():
             logger.info("  %-40s  %.4f", row["feature"], row["importance"])
+
+    logger.info("\nTo register the champion model, run:")
+    logger.info("  uv run python scripts/register_model.py")
 
 
 if __name__ == "__main__":

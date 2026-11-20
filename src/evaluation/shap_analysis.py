@@ -1,13 +1,3 @@
-"""
-SHAP-based model explainability.
-
-Global importance (summary plot) answers "which features drive churn overall?"
-Local explanation (waterfall/force plot) answers "why is THIS customer flagged?"
-
-XGBoost / LightGBM / RandomForest → TreeExplainer (exact, fast).
-LogisticRegression → LinearExplainer (exact for linear models).
-"""
-
 import logging
 from pathlib import Path
 from typing import Optional
@@ -79,13 +69,11 @@ def compute_shap_values(
     logger.info("Computing SHAP values for %d samples...", len(X_transformed))
     shap_values = explainer.shap_values(X_transformed)
 
-    # Tree models with multi-output return a list; take the positive-class slice
     if isinstance(shap_values, list):
         shap_values = shap_values[1]
 
     shap_df = pd.DataFrame(shap_values, columns=feature_names)
 
-    # --- Global summary bar plot ---
     fig, ax = plt.subplots(figsize=(9, max(5, min(max_display, len(feature_names)) * 0.4)))
     mean_abs = shap_df.abs().mean().sort_values(ascending=False).head(max_display)
     mean_abs[::-1].plot(kind="barh", ax=ax, color="#e74c3c", alpha=0.8)
@@ -98,7 +86,6 @@ def compute_shap_values(
     plt.close(fig)
     logger.info("SHAP bar plot saved → %s", out_path)
 
-    # --- Beeswarm summary plot (top features) ---
     try:
         top_features = mean_abs.index.tolist()
         shap_top = shap_df[top_features].values

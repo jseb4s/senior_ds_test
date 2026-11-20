@@ -1,5 +1,3 @@
-"""Unit tests for evaluation metrics."""
-
 import numpy as np
 import pytest
 
@@ -94,8 +92,6 @@ class TestComputeNetValue:
             assert key in result
 
     def test_zero_contacts_gives_zero_cost(self):
-        # All probabilities below threshold → no contacts, zero cost.
-        # Include both classes to avoid sklearn confusion matrix edge case.
         y_true = np.array([0] * 40 + [1] * 10)
         y_prob = np.full(50, 0.1)  # all below threshold=0.5
         result = compute_net_value(y_true, y_prob, threshold=0.5)

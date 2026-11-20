@@ -1,0 +1,35 @@
+feature,importance
+number_of_referrals,1.7600025316242034
+monthly_charges_ratio,1.4536142759663495
+tenure_in_months,1.3984670291637813
+net_revenue_per_month,1.035359903816469
+referrals_zero,0.6780446865602743
+internet_service,0.6717366487158432
+is_fiber,0.66496876762012
+payment_method_Credit Card,0.5931682579496542
+is_short_tenure,0.3909056140381215
+avg_monthly_long_distance_charges,0.34002566704694825
+total_charges,0.3344255404631101
+internet_type_DSL,0.3007212404685965
+payment_method_Mailed Check,0.25156811287131187
+phone_service,0.236080003478407
+total_revenue,0.22751617721771722
+multiple_lines,0.19559910354836263
+internet_type_Fiber Optic,0.17820114907309728
+streaming_tv,0.15185471285054516
+age,0.1512097985681362
+total_long_distance_charges,0.12857499751793247
+zip_population,0.1250506814157237
+internet_type_Cable,0.11217747655437388
+streaming_movies,0.10744292355400228
+streaming_count,0.10509770841479989
+married,0.10389245091254952
+has_extra_data_charges,0.09852211305812085
+unlimited_data,0.09110097457974946
+total_refunds,0.07731343977766063
+avg_monthly_gb_download,0.0688263383707424
+total_extra_data_charges,0.06717420585489539
+gender,0.041117182106467615
+revenue_to_charges_ratio,0.026035399955800165
+payment_method_Bank Withdrawal,0.025144767908979036
+streaming_music,0.010062351750532685

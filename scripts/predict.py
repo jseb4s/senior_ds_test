@@ -1,30 +1,3 @@
-#!/usr/bin/env python
-"""
-Batch scoring script.
-
-Loads the champion model from MLflow and scores a customer dataset,
-producing churn probabilities and binary predictions.
-
-Usage:
-    # Score the held-out test set (default — useful for validation)
-    python scripts/predict.py
-
-    # Score a CSV file of new customers
-    python scripts/predict.py --input path/to/customers.csv --output scores.csv
-
-    # Use a specific MLflow run instead of the best run by ROC-AUC
-    python scripts/predict.py --run-id <mlflow_run_id>
-
-Output columns appended to the input data:
-    churn_probability  — model score in [0, 1]
-    churn_prediction   — 1 if probability >= threshold, else 0
-    risk_tier          — High / Medium / Low based on probability quantiles
-
-Databricks usage:
-    - Set MLFLOW_TRACKING_URI to the Databricks tracking server.
-    - Replace db_path with the DBFS or Unity Catalog table path.
-"""
-
 import argparse
 import logging
 import sys
@@ -49,24 +22,34 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _get_model_uri(client, exp_id: str, run_id: str) -> str:
+    """MLflow 3.x stores models as LoggedModels — look up model_uri by source_run_id."""
+    models = client.search_logged_models(experiment_ids=[exp_id])
+    for m in models:
+        if m.source_run_id == run_id:
+            return m.model_uri
+    raise RuntimeError(f"No logged model found for run_id={run_id}. Re-run train.py.")
+
+
 def _load_champion_pipeline(tracking_uri: str, experiment_name: str, run_id: str = None):
     """Load the best-performing pipeline from MLflow."""
     mlflow.set_tracking_uri(tracking_uri)
     client = mlflow.MlflowClient()
-
-    if run_id:
-        logger.info("Loading model from explicit run_id: %s", run_id)
-        pipeline = mlflow.sklearn.load_model(f"runs:/{run_id}/model")
-        run = client.get_run(run_id)
-        threshold = run.data.metrics.get("threshold", 0.5)
-        model_name = run.data.tags.get("model_name", "unknown")
-        return pipeline, float(threshold), model_name
 
     exp = client.get_experiment_by_name(experiment_name)
     if exp is None:
         raise RuntimeError(
             f"MLflow experiment '{experiment_name}' not found. Run train.py first."
         )
+
+    if run_id:
+        logger.info("Loading model from explicit run_id: %s", run_id)
+        model_uri = _get_model_uri(client, exp.experiment_id, run_id)
+        pipeline = mlflow.sklearn.load_model(model_uri)
+        run = client.get_run(run_id)
+        threshold = run.data.metrics.get("threshold", 0.5)
+        model_name = run.data.tags.get("model_name", "unknown")
+        return pipeline, float(threshold), model_name
 
     runs = client.search_runs(
         exp.experiment_id,
@@ -87,7 +70,8 @@ def _load_champion_pipeline(tracking_uri: str, experiment_name: str, run_id: str
         threshold,
     )
 
-    pipeline = mlflow.sklearn.load_model(f"runs:/{best_run.info.run_id}/model")
+    model_uri = _get_model_uri(client, exp.experiment_id, best_run.info.run_id)
+    pipeline = mlflow.sklearn.load_model(model_uri)
     return pipeline, float(threshold), model_name
 
 

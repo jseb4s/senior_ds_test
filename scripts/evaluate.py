@@ -1,8 +1,3 @@
-"""
-Post-training evaluation: ROC curves, PR curves, feature importances, threshold analysis.
-Loads the best model from MLflow and generates report figures.
-"""
-
 import logging
 import sys
 import warnings
@@ -210,6 +205,10 @@ def main():
     exp = client.get_experiment_by_name(config["mlflow"]["experiment_name"])
     runs = client.search_runs(exp.experiment_id, order_by=["metrics.roc_auc DESC"])
 
+    # MLflow 3.x: models are LoggedModels — build a run_id → model_uri lookup
+    all_logged_models = client.search_logged_models(experiment_ids=[exp.experiment_id])
+    run_to_model_uri = {m.source_run_id: m.model_uri for m in all_logged_models}
+
     models_probs = {}
     fi_by_model = {}
 
@@ -217,9 +216,13 @@ def main():
         model_name = run.data.tags.get("model_name", "")
         if not model_name:
             continue
+        model_uri = run_to_model_uri.get(run.info.run_id)
+        if not model_uri:
+            logger.warning("No logged model found for run %s (%s) — skipping.", run.info.run_id, model_name)
+            continue
         logger.info("Loading model: %s (run_id=%s)", model_name, run.info.run_id)
         try:
-            pipeline = mlflow.sklearn.load_model(f"runs:/{run.info.run_id}/model")
+            pipeline = mlflow.sklearn.load_model(model_uri)
             y_prob = pipeline.predict_proba(X_test)[:, 1]
             models_probs[model_name] = y_prob
         except Exception as e:
@@ -241,7 +244,6 @@ def main():
     champ_prob = models_probs[champion]
     plot_threshold_analysis(y_test.values, champ_prob, champion)
 
-    # Feature importances from artifact
     for run in runs:
         m = run.data.tags.get("model_name", "")
         if m != champion:
@@ -255,7 +257,6 @@ def main():
         except Exception as e:
             logger.warning("Could not load feature importances: %s", e)
 
-    # Print final metrics table
     logger.info("\n%s", "=" * 80)
     logger.info("FINAL MODEL COMPARISON (Test Set)")
     logger.info("%-22s  %-10s  %-10s  %-10s  %-10s  %-10s", "Model", "ROC-AUC", "F2", "Recall", "Precision", "Threshold")
@@ -270,16 +271,17 @@ def main():
             metrics["recall"], metrics["precision"], metrics["threshold"],
         )
 
-    # --- SHAP explainability for champion ---
     logger.info("Computing SHAP values for champion model: %s", champion)
     champ_pipeline = None
     champ_use_ohe = champion == "logistic_regression"
     for run in runs:
         if run.data.tags.get("model_name", "") == champion:
-            try:
-                champ_pipeline = mlflow.sklearn.load_model(f"runs:/{run.info.run_id}/model")
-            except Exception as e:
-                logger.warning("Could not reload champion pipeline for SHAP: %s", e)
+            model_uri = run_to_model_uri.get(run.info.run_id)
+            if model_uri:
+                try:
+                    champ_pipeline = mlflow.sklearn.load_model(model_uri)
+                except Exception as e:
+                    logger.warning("Could not reload champion pipeline for SHAP: %s", e)
             break
 
     if champ_pipeline is not None:
@@ -299,18 +301,31 @@ def main():
         except Exception as e:
             logger.warning("SHAP analysis failed: %s", e)
 
-    # --- Logistic Regression odds ratios (interpretable communication model) ---
     for run in runs:
         if run.data.tags.get("model_name", "") != "logistic_regression":
             continue
-        try:
-            lr_pipeline = mlflow.sklearn.load_model(f"runs:/{run.info.run_id}/model")
-            _plot_lr_odds_ratios(lr_pipeline, numeric_cols, categorical_cols)
-        except Exception as e:
-            logger.warning("Could not extract LR odds ratios: %s", e)
+        model_uri = run_to_model_uri.get(run.info.run_id)
+        if model_uri:
+            try:
+                lr_pipeline = mlflow.sklearn.load_model(model_uri)
+                _plot_lr_odds_ratios(lr_pipeline, numeric_cols, categorical_cols)
+            except Exception as e:
+                logger.warning("Could not extract LR odds ratios: %s", e)
         break
 
     logger.info("\nAll figures saved to: %s", FIGURES_DIR)
+
+    champ_run_id = None
+    for run in runs:
+        if run.data.tags.get("model_name", "") == champion:
+            champ_run_id = run.info.run_id
+            break
+
+    if champ_run_id:
+        with mlflow.start_run(run_id=champ_run_id):
+            for fig_path in sorted(FIGURES_DIR.glob("*.png")):
+                mlflow.log_artifact(str(fig_path), artifact_path="figures")
+            logger.info("All figures logged as artifacts in champion run: %s", champ_run_id)
 
 
 def _plot_lr_odds_ratios(pipeline, numeric_cols: list, categorical_cols: list, top_n: int = 20) -> None:
@@ -344,7 +359,6 @@ def _plot_lr_odds_ratios(pipeline, numeric_cols: list, categorical_cols: list, t
         .reset_index(drop=True)
     )
 
-    # Save CSV for stakeholder reporting
     or_csv = FIGURES_DIR.parent / "logistic_regression_odds_ratios.csv"
     df_or.to_csv(or_csv, index=False)
     logger.info("Odds ratios saved → %s", or_csv)

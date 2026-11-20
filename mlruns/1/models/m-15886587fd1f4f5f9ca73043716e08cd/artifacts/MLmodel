@@ -1,0 +1,23 @@
+artifact_path: /Users/juanse/Documents/PGD/Senior Data Science Test/telecom_churn/mlruns/1/models/m-15886587fd1f4f5f9ca73043716e08cd/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.12.12
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: pickle
+    sklearn_version: 1.9.1
+    skops_trusted_types: null
+mlflow_version: 3.18.0
+model_id: m-15886587fd1f4f5f9ca73043716e08cd
+model_size_bytes: 5781
+model_uuid: m-15886587fd1f4f5f9ca73043716e08cd
+prompts: null
+run_id: b84724c10ee8465399cb53171d82d6c2
+utc_time_created: '2026-11-19 17:22:55.855422'
