@@ -1,7 +1,6 @@
 # AllLife Communications — Telecom Churn Prediction
 
 **Senior Data Science Technical Assessment — Part A**
-
 ---
 
 ## Project Structure
